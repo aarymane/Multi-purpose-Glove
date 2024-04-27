@@ -1,0 +1,183 @@
+#include <Wire.h>
+#include <MPU6050.h>
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+#include <SoftwareSerial.h>
+
+MPU6050 mpu;
+RF24 radio(7, 8);  // CE, CSN
+byte addresses[][6] = {"1Node", "2Node"};
+
+SoftwareSerial BTserial(9, 10); // Bluetooth (Rx, Tx)
+
+int ALL_ON = 0;
+int ALL_OFF = 0;
+
+void setup() {
+  Serial.begin(9600);
+  BTserial.begin(9600); // Initialize Bluetooth serial communication
+
+  radio.begin();
+  radio.setPALevel(RF24_PA_MIN);
+  radio.setDataRate(RF24_2MBPS);
+  radio.setChannel(124);
+  radio.openWritingPipe(addresses[1]);
+
+  while (!mpu.begin(MPU6050_SCALE_2000DPS, MPU6050_RANGE_2G)) {
+    Serial.println("Could not find a valid MPU6050 sensor, check wiring!");
+    delay(500);
+  }
+  checkSettings();
+}
+
+void checkSettings() {
+  Serial.println();
+  Serial.print(" * Sleep Mode: ");
+  Serial.println(mpu.getSleepEnabled() ? "Enabled" : "Disabled");
+  Serial.print(" * Clock Source: ");
+  switch (mpu.getClockSource()) {
+ case MPU6050_CLOCK_KEEP_RESET: 
+ Serial.println("Stops the clock and keeps the timing generator in reset");
+break;
+case MPU6050_CLOCK_PLL_ZGYRO:
+Serial.println("PLL with Z axis gyroscope reference");
+ break;
+case MPU6050_CLOCK_PLL_YGYRO: 
+Serial.println("PLL with Y axis gyroscope reference");
+ break;
+ case MPU6050_CLOCK_PLL_XGYRO: 
+ Serial.println("PLL with X axis gyroscope reference");
+ break;
+case MPU6050_CLOCK_INTERNAL_8MHZ: 
+Serial.println("Internal 8MHz oscillator");
+break;
+  }
+  Serial.print(" * Accelerometer offsets: ");
+  Serial.print(mpu.getAccelOffsetX());
+  Serial.print(" / ");
+  Serial.print(mpu.getAccelOffsetY());
+  Serial.print(" / ");
+  Serial.println(mpu.getAccelOffsetZ());
+  Serial.println();
+}
+
+void sendCommand(int command) {
+  radio.write(&command, sizeof(command));
+  Serial.print("Transmitting Command: ");
+  Serial.println(command);
+  delay(1000);
+}
+
+void loop() {
+  Vector normAccel = mpu.readNormalizeAccel();
+
+  Serial.print("Normalized Accel: ");
+  Serial.print(normAccel.XAxis);
+  Serial.print(", ");
+  Serial.print(normAccel.YAxis);
+  Serial.print(", ");
+  Serial.println(normAccel.ZAxis);
+
+  int relayCommand = 0; // Default to no relay action
+
+  if (normAccel.XAxis > 5) {
+    Serial.println("NORMAL");
+    relayCommand = 1;
+  } else if (normAccel.ZAxis > 0.5) {
+    Serial.println("UP");
+    relayCommand = 2;
+  } else if (normAccel.ZAxis < -5) {
+    Serial.println("DOWN");
+    relayCommand = 3;
+  } else if (normAccel.YAxis < -5) {
+    Serial.println("LEFT");
+    relayCommand = 4;
+  } else if (normAccel.YAxis > 5) {
+    Serial.println("RIGHT");
+    relayCommand = 5;
+  }
+
+  ALL_ON = BTserial.read(); // ALL LIGHTS ON BUTTON
+  Serial.println(ALL_ON);
+
+  if (ALL_ON == 'f') {
+    sendCommand(6); // Transmit ALL_ON command
+  }
+
+  ALL_OFF = BTserial.read(); // ALL LIGHTS OFF BUTTON
+  Serial.println(ALL_OFF);
+
+  if (ALL_OFF == 'g') {
+    sendCommand(7); // Transmit ALL_OFF command
+  }
+
+  sendCommand(relayCommand); // Send the relay command
+
+  // Add your logic or further processing here
+
+  delay(1000);
+}
+{
+  int flexValue1 = analogRead(flexPin1);
+  int flexValue2 = analogRead(flexPin2);
+  int flexValue3 = analogRead(flexPin3);
+  int flexValue4 = analogRead(flexPin4);
+  int flexValue5 = analogRead(flexPin5);
+
+
+  if  (((flexValue1 >=697) && (flexValue1 <= 710)) &&
+           ((flexValue2 >= 865) && (flexValue2 <= 880)) &&
+           ((flexValue3 >= 865) && (flexValue3 <= 880)) &&
+           ((flexValue4 >= 1020) && (flexValue4 <= 1023)) &&
+           ((flexValue5 > 915) && (flexValue5 <= 925)))
+  {
+    Serial.println('A');
+  }
+  else if (((flexValue1 >= 720) && (flexValue1 <= 770)) &&
+           ((flexValue2 >= 845) && (flexValue2 <= 860)) &&
+           ((flexValue3 >= 850) && (flexValue3 <= 860)) &&
+           ((flexValue4 >= 1020) && (flexValue4 <= 1023)) &&
+           ((flexValue5 >= 890)&& (flexValue5 <= 910)))
+  {
+    Serial.println('B');
+  }
+  // else if ((flexValue1 > 870) &&
+  //          (flexValue2 > 870) &&
+  //          (flexValue3 >= 670) &&
+  //          (flexValue4 >= 907) &&
+  //          (flexValue5 >= 847))
+  // {
+  //   Serial.println('C');
+  
+  else if (((flexValue1 >= 720) && (flexValue1 <= 770)) &&
+           ((flexValue2 >= 845) && (flexValue2 <= 860)) &&
+           ((flexValue3 >= 865) && (flexValue3 <= 880)) &&
+           ((flexValue4 >= 1020) && (flexValue4 <= 1023)) &&
+           ((flexValue5 > 915) && (flexValue5 <= 925)))
+  {
+    Serial.println('D');
+  }
+  else if ((flexValue1 >= 720)&&(flexValue1 <= 750) &&
+          ((flexValue2 >= 845) && (flexValue2 <= 860))&&
+          ((flexValue3 >= 870) && (flexValue3 <= 880))&&
+          ((flexValue4 >= 1020) && (flexValue4 <= 1023)) &&
+          ((flexValue5 >= 890) && (flexValue5 <= 910)))
+  {
+    Serial.println(g);
+  }
+  
+  Serial.print("\tFlex Sensor 1: ");
+  Serial.print(flexValue1);
+  Serial.print("\tFlex Sensor 2: ");
+  Serial.print(flexValue2);
+  Serial.print("\tFlex Sensor 3: ");
+  Serial.print(flexValue3);
+  Serial.print("\tFlex Sensor 4: ");
+  Serial.print(flexValue4);
+  Serial.print("\tFlex Sensor 5: ");
+  Serial.println(flexValue5);
+
+  delay(1000); // Adjust the delay as needed
+}
+
