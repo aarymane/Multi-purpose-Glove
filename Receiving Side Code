@@ -1,0 +1,76 @@
+#include <Wire.h>
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+
+RF24 radio(9,10);  // CE, CSN
+byte addresses[][6] = {"1Node", "2Node"};
+
+const int relayPin1 = 2; // Relay control pin for bulb 1
+const int relayPin2 = 3; // Relay control pin for bulb 2
+
+void setup() {
+  Serial.begin(9600);
+  
+  pinMode(relayPin1, OUTPUT);
+  pinMode(relayPin2, OUTPUT);
+  
+  radio.begin();
+  radio.setPALevel(RF24_PA_MIN);
+  radio.setDataRate(RF24_2MBPS);
+  radio.setChannel(124);
+  radio.openReadingPipe(1, addresses[1]);
+  radio.startListening();
+}
+
+void loop() {
+  if (radio.available()) {
+    int command;
+    radio.read(&command, sizeof(command));
+
+    switch (command) {
+      case 1:
+        Serial.println("Received Command: ZERO");
+        // Turn off both bulbs
+        digitalWrite(relayPin1, HIGH);
+        digitalWrite(relayPin2, HIGH);
+        break;
+      case 2:
+        Serial.println("Received Command: HELLO");
+        // Turn on both bulbs
+        digitalWrite(relayPin1, LOW);
+       digitalWrite(relayPin2, LOW);
+        break;
+      case 3:
+        Serial.println("Received Command: HII");
+        // Turn off both bulbs
+        digitalWrite(relayPin1, HIGH);
+        digitalWrite(relayPin2, HIGH);
+        break;
+      case 4:
+        Serial.println("Received Command: LEFT");
+        // Turn on bulb 1
+        digitalWrite(relayPin1, HIGH);
+        digitalWrite(relayPin2, LOW);
+        break;
+      case 5:
+        Serial.println("Received Command: RIGHT");
+        // Turn on bulb 2
+        digitalWrite(relayPin1, LOW);
+        digitalWrite(relayPin2, HIGH);
+        break;
+      case 6:
+        Serial.println("Received Command: FOOD");
+        // Turn on both bulbs
+        digitalWrite(relayPin1, HIGH);
+        digitalWrite(relayPin2, HIGH);
+        break;
+      default:
+        Serial.println("Invalid Command");
+        // Add default logic or error handling here
+        break;
+    }
+  }
+
+  // Add other receiver side logic or processing here
+}
